@@ -1,0 +1,141 @@
+{
+  "info": {
+    "_postman_id": "2a57d788-0c94-4cb7-a3e8-47b20198fbe3",
+    "name": "My Collection",
+    "description": "### Welcome to Postman! This is your first collection. \n\nCollections are your starting point for building and testing APIs. You can use this one to:\n\n• Group related requests\n• Test your API in real-world scenarios\n• Document and share your requests\n\nUpdate the name and overview whenever you’re ready to make it yours.\n\n[Learn more about Postman Collections.](https://learning.postman.com/docs/collections/collections-overview/)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "55983220",
+    "_collection_link": "https://go.postman.co/collection/55983220-2a57d788-0c94-4cb7-a3e8-47b20198fbe3?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "access_token",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "var CryptoJS = require('crypto-js');\r",
+              " \r",
+              "const bmUsername = pm.environment.get('bm_username');\r",
+              "const bmPassword = pm.environment.get('bm_password');\r",
+              "const ocapiClientPassw = pm.environment.get('ocapi-client-password');\r",
+              " \r",
+              "const rawStr = CryptoJS.enc.Utf8.parse(`${bmUsername}:${bmPassword}:${ocapiClientPassw}`);\r",
+              "const base64Encoded = CryptoJS.enc.Base64.stringify(rawStr);\r",
+              " \r",
+              "pm.environment.set('USER_CREDENTIALS', base64Encoded);"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const jsonData = pm.response.json();\r",
+              " \r",
+              "pm.test('Access_token exists', function() {\r",
+              "    pm.expect(jsonData.access_token).to.be.a('string');\r",
+              "});\r",
+              " \r",
+              "if (pm.response.code === 200 || pm.response.code === 201) {\r",
+              "    pm.environment.set('ACCESS_TOKEN', jsonData.access_token);\r",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Basic {{USER_CREDENTIALS}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "grant_type",
+              "value": "urn:demandware:params:oauth:grant-type:client-id:dwsid:dwsecuretoken",
+              "type": "text",
+              "uuid": "fceca942-82f7-432e-b6d4-1c1d4f3d5912"
+            }
+          ]
+        },
+        "url": {
+          "raw": "https://{{ocapi-instance-host}}/dw/oauth2/access_token?client_id={{ocapi-client-id}}",
+          "protocol": "https",
+          "host": [
+            "{{ocapi-instance-host}}"
+          ],
+          "path": [
+            "dw",
+            "oauth2",
+            "access_token"
+          ],
+          "query": [
+            {
+              "key": "client_id",
+              "value": "{{ocapi-client-id}}"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "lista",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{ACCESS_TOKEN}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n\r\n \"query\": {\r\n\r\n \"filtered_query\": {\r\n\r\n  \"filter\": {\r\n\r\n   \"range_filter\": {\r\n\r\n    \"field\": \"creation_date\",\r\n\r\n    \"from\": \"2026-01-01T00:31:41.6877742-05:00\"\r\n\r\n    }\r\n\r\n   },\r\n\r\n  \"query\": {\r\n\r\n   \"bool_query\": {\r\n\r\n    \"must\": [\r\n\r\n      {\r\n\r\n      \"term_query\": {\r\n\r\n       \"fields\": [\r\n\r\n        \"payment_status\"\r\n\r\n        ],\r\n\r\n       \"operator\": \"is\",\r\n\r\n       \"values\": [\r\n\r\n        \"paid\"\r\n\r\n        ]\r\n\r\n       }\r\n\r\n      },\r\n\r\n      {\r\n\r\n      \"term_query\": {\r\n\r\n       \"fields\": [\r\n\r\n        \"export_status\"\r\n\r\n        ],\r\n\r\n       \"operator\": \"is\",\r\n\r\n       \"values\": [\r\n\r\n        \"ready\"\r\n\r\n        ]\r\n\r\n       }\r\n\r\n      },\r\n\r\n      {\r\n\r\n      \"term_query\": {\r\n\r\n       \"fields\": [\r\n\r\n        \"c_orderStatus\"\r\n\r\n        ],\r\n\r\n       \"operator\": \"is\",\r\n\r\n       \"values\": [\r\n\r\n        \"2\"\r\n\r\n        ]\r\n\r\n       }\r\n\r\n      }\r\n\r\n     ],\r\n\r\n    \"must_not\": [\r\n\r\n      {\r\n\r\n      \"term_query\": {\r\n\r\n       \"fields\": [\r\n\r\n        \"status\"\r\n\r\n        ],\r\n\r\n       \"operator\": \"is\",\r\n\r\n       \"values\": [\r\n\r\n        \"cancelled\"\r\n\r\n        ]\r\n\r\n       }\r\n\r\n      }\r\n\r\n     ]\r\n\r\n    }\r\n\r\n   }\r\n\r\n  }\r\n\r\n },\r\n\r\n\r\n\r\n\r\n\r\n \"select\": \"(count,total,hits.(data.(order_no,export_status,status,creation_date,order_total,payment_status,shipping_status,confirmation_status,site_id,shipments.(shipment_id,shipping_method.(id,name),shipping_address.(city)),billing_address.(city))))\",\r\n\r\n \"count\": 200,\r\n\r\n \"start\": 0,\r\n\r\n \"expand\": null,\r\n\r\n \"sorts\": [\r\n\r\n  {\r\n\r\n  \"field\": \"creation_date\",\r\n\r\n  \"sort_order\": \"asc\"\r\n\r\n  }\r\n\r\n ]\r\n\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://{{ocapi-instance-host}}/s/{{ocapi-site}}/dw/shop/v23_2/order_search",
+          "protocol": "https",
+          "host": [
+            "{{ocapi-instance-host}}"
+          ],
+          "path": [
+            "s",
+            "{{ocapi-site}}",
+            "dw",
+            "shop",
+            "v23_2",
+            "order_search"
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}
