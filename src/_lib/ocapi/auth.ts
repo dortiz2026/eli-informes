@@ -1,78 +1,58 @@
 import "server-only";
 import type { OcapiTokenResponse } from "@/_lib/definitions";
 
-// ==================== Token Cache ====================
-// Cache en memoria para evitar solicitar un token nuevo en cada petición.
-// Los tokens de OCAPI duran ~30 minutos. Renovamos con 5 minutos de margen.
+// ==================== Token Cache (Global Único) ====================
+// UN solo token sirve para todas las tiendas.
+// Duración mínima: 10 minutos. Renovamos con 2 minutos de margen.
 
 interface CachedToken {
   accessToken: string;
   expiresAt: number; // timestamp en ms
 }
 
-const tokenCache = new Map<string, CachedToken>();
+let cachedToken: CachedToken | null = null;
 
-/** Margen de seguridad: renovar 5 minutos antes de que expire */
-const EXPIRY_MARGIN_MS = 5 * 60 * 1000;
+/** Margen de seguridad: renovar 2 minutos antes de que expire */
+const EXPIRY_MARGIN_MS = 2 * 60 * 1000;
 
 /**
- * Lock de deduplicación: si ya hay una solicitud de token en vuelo para un host,
- * las peticiones concurrentes esperan la misma promesa en lugar de disparar
- * solicitudes duplicadas a Salesforce.
+ * Lock de deduplicación: si ya hay una solicitud de token en vuelo,
+ * las peticiones concurrentes esperan la misma promesa en lugar de
+ * disparar solicitudes duplicadas a Salesforce.
  */
-const pendingRequests = new Map<string, Promise<OcapiTokenResponse>>();
-
-function getCachedToken(host: string): string | null {
-  const cached = tokenCache.get(host);
-  if (!cached) return null;
-
-  // Si el token está a punto de expirar, descartarlo
-  if (Date.now() >= cached.expiresAt - EXPIRY_MARGIN_MS) {
-    tokenCache.delete(host);
-    return null;
-  }
-
-  return cached.accessToken;
-}
-
-function setCachedToken(host: string, token: string, expiresInSeconds: number): void {
-  tokenCache.set(host, {
-    accessToken: token,
-    expiresAt: Date.now() + expiresInSeconds * 1000,
-  });
-}
+let pendingRequest: Promise<OcapiTokenResponse> | null = null;
 
 // ==================== Public API ====================
 
+/**
+ * Obtiene el token de acceso global para OCAPI.
+ * @param host - Host de cualquier tienda (solo se usa si necesita pedir un token nuevo)
+ */
 export async function getAccessToken(host: string): Promise<OcapiTokenResponse> {
-  // 1. Verificar si hay un token válido en caché para este host
-  const cached = getCachedToken(host);
-  if (cached) {
-    return { access_token: cached, expires_in: 0, token_type: "Bearer" };
+  // 1. Verificar si hay un token válido en caché
+  if (cachedToken && Date.now() < cachedToken.expiresAt - EXPIRY_MARGIN_MS) {
+    return { access_token: cachedToken.accessToken, expires_in: 0, token_type: "Bearer" };
   }
 
-  // 2. Si ya hay una solicitud en vuelo para este host, esperar su resultado
-  const pending = pendingRequests.get(host);
-  if (pending) {
-    return pending;
+  // 2. Si ya hay una solicitud en vuelo, esperar su resultado
+  if (pendingRequest) {
+    return pendingRequest;
   }
 
   // 3. Crear la promesa de solicitud y registrarla como "en vuelo"
-  const requestPromise = fetchNewToken(host);
-  pendingRequests.set(host, requestPromise);
+  pendingRequest = fetchNewToken(host);
 
   try {
-    const result = await requestPromise;
+    const result = await pendingRequest;
     return result;
   } finally {
-    // Limpiar el lock sin importar si falló o no
-    pendingRequests.delete(host);
+    pendingRequest = null;
   }
 }
 
-/** Invalida el token en caché para un host específico (por ejemplo, tras un 401/403) */
-export function invalidateToken(host: string): void {
-  tokenCache.delete(host);
+/** Invalida el token en caché (por ejemplo, tras un 401/403) */
+export function invalidateToken(): void {
+  cachedToken = null;
 }
 
 // ==================== Internal ====================
@@ -106,16 +86,20 @@ async function fetchNewToken(host: string): Promise<OcapiTokenResponse> {
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(
-      `Failed to get access token for ${host}: ${response.status} ${errorText}`
+      `Failed to get access token from ${host}: ${response.status} ${errorText}`
     );
   }
 
   const tokenData = await response.json() as OcapiTokenResponse;
 
-  // Guardar en caché. expires_in de OCAPI suele ser ~1800 segundos (30 min)
+  // Guardar en caché. Usar expires_in de la respuesta, o 1800s (30 min) por defecto
   const expiresIn = tokenData.expires_in || 1800;
-  setCachedToken(host, tokenData.access_token, expiresIn);
+  cachedToken = {
+    accessToken: tokenData.access_token,
+    expiresAt: Date.now() + expiresIn * 1000,
+  };
 
   return tokenData;
 }
+
 
