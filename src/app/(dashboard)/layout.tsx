@@ -1,34 +1,34 @@
 import { createClient } from "@/_lib/supabase/server";
 import Sidebar from "@/_components/sidebar/Sidebar";
 import { redirect } from "next/navigation";
+import { getSession, deleteSession } from "@/_lib/session";
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
+  const session = await getSession();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
+  if (!session) {
     redirect("/login");
   }
+
+  const supabase = await createClient();
 
   // Verificar la existencia y verificación del usuario en la base de datos
   const { data: dbUser, error: userError } = await supabase
     .from("users")
     .select("is_verified")
-    .eq("id", user.id)
+    .eq("id", session.userId)
     .single();
 
   if (userError || !dbUser || !dbUser.is_verified) {
     // Si no está verificado o no existe, destruir sesión y redirigir
-    await supabase.auth.signOut();
+    await deleteSession();
     redirect("/login");
   }
+
 
   // Obtener todos los servicios activos de la BD para pintar el menú lateral dinámicamente
   const { data: services } = await supabase

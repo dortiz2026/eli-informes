@@ -16,6 +16,8 @@ function SetPasswordForm() {
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
     const emailParam = searchParams.get("email");
@@ -65,13 +67,42 @@ function SetPasswordForm() {
         throw new Error(data.error || "Algo salió mal al asignar contraseña.");
       }
 
-      router.push("/dashboard");
+      setSuccessMessage(data.message || "Contraseña establecida con éxito. Debes esperar a que un administrador verifique tu acceso.");
+      setSuccess(true);
     } catch (err: any) {
       setError(err.message || "Error al asignar contraseña");
     } finally {
       setLoading(false);
     }
   };
+
+  if (success) {
+    return (
+      <div className="w-full max-w-md p-8 bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl relative overflow-hidden backdrop-blur-md bg-opacity-70 text-center animate-fade-in-up">
+        {/* Glow Effect */}
+        <div className="absolute -top-10 -left-10 w-40 h-40 bg-white/5 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-white/5 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="w-16 h-16 bg-white/10 text-white border border-white/20 rounded-full flex items-center justify-center mx-auto mb-6">
+          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <h2 className="text-2xl font-medium tracking-tight text-white mb-2">
+          Contraseña Establecida
+        </h2>
+        <p className="text-gray-400 text-sm mb-8 leading-relaxed">
+          {successMessage}
+        </p>
+        <button
+          onClick={() => router.push("/login")}
+          className="w-full py-3 bg-white text-black font-semibold rounded-lg hover:bg-gray-200 focus:outline-none transition-all text-sm"
+        >
+          Volver a Iniciar Sesión
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-md p-8 bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl relative overflow-hidden backdrop-blur-md bg-opacity-70 animate-fade-in-up">

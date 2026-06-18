@@ -9,7 +9,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "El correo es requerido" }, { status: 400 });
     }
 
-    if (!email.endsWith("@patprimo.com.co")) {
+    const lowerEmail = email.toLowerCase();
+
+    if (!lowerEmail.endsWith("@patprimo.com.co")) {
       return NextResponse.json(
         { error: "Solo se permiten correos con dominio @patprimo.com.co" },
         { status: 400 }
@@ -22,36 +24,38 @@ export async function POST(request: NextRequest) {
     const { data: user, error: fetchError } = await supabase
       .from("users")
       .select("*")
-      .eq("email", email)
+      .eq("email", lowerEmail)
       .single();
 
     if (fetchError && fetchError.code !== "PGRST116") {
       return NextResponse.json({ error: "Error al buscar usuario" }, { status: 500 });
     }
 
-    // 2. Si no existe en la base de datos, registrar en Supabase Auth y disparar confirmación de email
+    // 2. Si no existe en la base de datos, registrar en la tabla users con is_verified = false
     if (!user) {
-      // Registramos en Supabase Auth con una clave temporal. El usuario recibirá un correo con el link de verificación de Supabase.
-      const tempPassword = Math.random().toString(36).slice(-10) + "TempPash1!";
-      
-      const { error: signUpError } = await supabase.auth.signUp({
-        email,
-        password: tempPassword,
-        options: {
-          emailRedirectTo: `${request.nextUrl.origin}/api/auth/callback?next=/set-password?email=${encodeURIComponent(email)}`
-        }
-      });
+      const { data: newUser, error: insertError } = await supabase
+        .from("users")
+        .insert({
+          email: lowerEmail,
+          name: lowerEmail.split("@")[0],
+          role: "viewer",
+          is_verified: false,
+          password_hash: null
+        })
+        .select()
+        .single();
 
-      if (signUpError) {
+      if (insertError) {
         return NextResponse.json(
-          { error: "Error al registrar en Supabase Auth: " + signUpError.message },
+          { error: "Error al registrar usuario en la base de datos: " + insertError.message },
           { status: 500 }
         );
       }
 
       return NextResponse.json({
-        action: "verification-sent",
-        message: "Se ha enviado un correo de verificación. Revisa tu bandeja de entrada para activar tu cuenta."
+        action: "set-password",
+        message: "Establece tu contraseña para continuar.",
+        email: lowerEmail
       });
     }
 
@@ -60,7 +64,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         action: "set-password",
         message: "Establece tu contraseña para continuar.",
-        email: email
+        email: lowerEmail
       });
     }
 
@@ -76,3 +80,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

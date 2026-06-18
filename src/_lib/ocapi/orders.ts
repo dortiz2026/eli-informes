@@ -7,7 +7,7 @@ export async function searchPendingOrders(
   site: string,
   accessToken: string
 ): Promise<PendingOrderInfo[]> {
-  const url = `https://${host}/s/${site}/dw/shop/v23_2/order_search`;
+  const url = `https://${host}/s/${site}/dw/shop/v22_4/order_search`;
   
   const body = {
     query: {

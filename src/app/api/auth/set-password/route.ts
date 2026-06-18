@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/_lib/supabase/server";
 import { SetPasswordSchema } from "@/_lib/definitions";
+import bcrypt from "bcryptjs";
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,49 +17,53 @@ export async function POST(request: NextRequest) {
     }
 
     const { email, password } = parsed.data;
+    const lowerEmail = email.toLowerCase();
     const supabase = await createClient();
 
-    // Validar si existe sesión activa de Supabase Auth
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
+    // 1. Buscar si el usuario existe en nuestra tabla public.users
+    const { data: user, error: fetchError } = await supabase
+      .from("users")
+      .select("*")
+      .eq("email", lowerEmail)
+      .single();
+
+    if (fetchError || !user) {
       return NextResponse.json(
-        { error: "No hay una sesión activa de Supabase. Por favor, asegúrate de activar tu cuenta haciendo clic en el enlace del correo de verificación antes de establecer tu contraseña." },
-        { status: 401 }
+        { error: "El usuario no existe o no se pudo verificar." },
+        { status: 404 }
       );
     }
 
-    // 1. Actualizar contraseña del usuario logueado en Supabase Auth
-    const { error: authError } = await supabase.auth.updateUser({
-      password: password
-    });
-
-    if (authError) {
+    // 2. Si ya tiene una contraseña establecida, evitar sobreescritura
+    if (user.password_hash) {
       return NextResponse.json(
-        { error: "Error al actualizar contraseña en Supabase Auth: " + authError.message },
-        { status: 500 }
+        { error: "La contraseña ya ha sido establecida previamente para este usuario." },
+        { status: 400 }
       );
     }
 
-    // 2. Actualizar la tabla pública public.users para marcar que ya tiene contraseña asignada
+    // 3. Cifrar la contraseña con bcryptjs
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // 4. Actualizar la tabla pública public.users con la nueva contraseña cifrada
     const { error: updateError } = await supabase
       .from("users")
       .update({
-        password_hash: "assigned_in_auth", // Marcador de clave asignada
-        is_verified: true,
+        password_hash: hashedPassword,
         updated_at: new Date().toISOString()
       })
-      .eq("email", email);
+      .eq("email", lowerEmail);
 
     if (updateError) {
       return NextResponse.json(
-        { error: "Error al actualizar perfil en base de datos: " + updateError.message },
+        { error: "Error al actualizar contraseña en base de datos: " + updateError.message },
         { status: 500 }
       );
     }
 
     return NextResponse.json({
       success: true,
-      message: "Contraseña establecida con éxito"
+      message: "Contraseña establecida con éxito. Debes esperar a que un administrador verifique tu acceso."
     });
   } catch (err: any) {
     return NextResponse.json(
@@ -67,3 +72,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
