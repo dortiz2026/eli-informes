@@ -29,7 +29,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es" className="h-full" data-theme="dark" suppressHydrationWarning>
+    <html lang="es" className="h-full" data-theme="light" suppressHydrationWarning>
       <body className={`${plusJakartaSans.variable} h-full antialiased font-sans`}>
         <ThemeProvider>
           {children}
