@@ -1,86 +1,139 @@
 @import "tailwindcss";
 
+/* ===================================================================
+   THEME SYSTEM — Light & Dark via data-theme attribute
+   =================================================================== */
+
+[data-theme="dark"] {
+  --th-bg: #000000;
+  --th-surface: #0a0a0a;
+  --th-surface-raised: #111111;
+  --th-text: #ffffff;
+  --th-text-secondary: #a0a0a0;
+  --th-text-muted: #555555;
+  --th-text-faint: #333333;
+  --th-border: rgba(255, 255, 255, 0.06);
+  --th-border-strong: rgba(255, 255, 255, 0.12);
+  --th-subtle: rgba(255, 255, 255, 0.04);
+  --th-subtle-hover: rgba(255, 255, 255, 0.07);
+  --th-glass: rgba(255, 255, 255, 0.03);
+  --th-glass-strong: rgba(255, 255, 255, 0.05);
+  --th-glass-border: rgba(255, 255, 255, 0.06);
+  --th-glass-shadow: none;
+  --th-sidebar-bg: rgba(10, 10, 10, 0.85);
+  --th-sidebar-border: rgba(255, 255, 255, 0.04);
+  --th-dot-pattern: rgba(255, 255, 255, 0.07);
+  --th-scrollbar: rgba(255, 255, 255, 0.08);
+  --th-scrollbar-hover: rgba(255, 255, 255, 0.15);
+  --th-sparkline: rgba(255, 255, 255, 0.06);
+  --th-chart-1: rgba(255, 255, 255, 0.85);
+  --th-chart-2: rgba(255, 255, 255, 0.55);
+  --th-chart-3: rgba(255, 255, 255, 0.35);
+  --th-chart-4: rgba(255, 255, 255, 0.20);
+  --th-chart-track: rgba(255, 255, 255, 0.04);
+  --th-overlay: rgba(0, 0, 0, 0.70);
+  --th-invert: 0;
+}
+
+[data-theme="light"] {
+  --th-bg: #f5f5f5;
+  --th-surface: #ffffff;
+  --th-surface-raised: #ffffff;
+  --th-text: #111111;
+  --th-text-secondary: #555555;
+  --th-text-muted: #999999;
+  --th-text-faint: #cccccc;
+  --th-border: rgba(0, 0, 0, 0.08);
+  --th-border-strong: rgba(0, 0, 0, 0.15);
+  --th-subtle: rgba(0, 0, 0, 0.03);
+  --th-subtle-hover: rgba(0, 0, 0, 0.06);
+  --th-glass: #ffffff;
+  --th-glass-strong: #ffffff;
+  --th-glass-border: rgba(0, 0, 0, 0.07);
+  --th-glass-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --th-sidebar-bg: #ffffff;
+  --th-sidebar-border: rgba(0, 0, 0, 0.08);
+  --th-dot-pattern: rgba(0, 0, 0, 0.04);
+  --th-scrollbar: rgba(0, 0, 0, 0.08);
+  --th-scrollbar-hover: rgba(0, 0, 0, 0.18);
+  --th-sparkline: rgba(0, 0, 0, 0.04);
+  --th-chart-1: rgba(0, 0, 0, 0.80);
+  --th-chart-2: rgba(0, 0, 0, 0.55);
+  --th-chart-3: rgba(0, 0, 0, 0.35);
+  --th-chart-4: rgba(0, 0, 0, 0.20);
+  --th-chart-track: rgba(0, 0, 0, 0.04);
+  --th-overlay: rgba(0, 0, 0, 0.40);
+  --th-invert: 1;
+}
+
+/* ===================================================================
+   TAILWIND THEME MAPPING
+   =================================================================== */
+
 @theme inline {
-  /* === Paleta de colores === */
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-th-bg: var(--th-bg);
+  --color-th-surface: var(--th-surface);
+  --color-th-surface-raised: var(--th-surface-raised);
+  --color-th-text: var(--th-text);
+  --color-th-text-secondary: var(--th-text-secondary);
+  --color-th-text-muted: var(--th-text-muted);
+  --color-th-text-faint: var(--th-text-faint);
+  --color-th-border: var(--th-border);
+  --color-th-border-strong: var(--th-border-strong);
+  --color-th-subtle: var(--th-subtle);
+  --color-th-subtle-hover: var(--th-subtle-hover);
+  --color-th-sidebar-bg: var(--th-sidebar-bg);
+  --color-th-sidebar-border: var(--th-sidebar-border);
+  --color-th-overlay: var(--th-overlay);
 
-  /* Grises */
-  --color-gray-950: #0a0a0a;
-  --color-gray-900: #1a1a1a;
-  --color-gray-800: #2a2a2a;
-  --color-gray-700: #3a3a3a;
-  --color-gray-600: #4a4a4a;
-  --color-gray-500: #6a6a6a;
-  --color-gray-400: #8a8a8a;
-  --color-gray-300: #b0b0b0;
-  --color-gray-200: #d4d4d4;
-  --color-gray-100: #e5e5e5;
-  --color-gray-50: #f5f5f5;
-
-  /* Superficie (fondo de cards, sidebar, etc) */
-  --color-surface: #ffffff;
-  --color-surface-hover: #f5f5f5;
-  --color-surface-active: #e5e5e5;
-  --color-surface-dark: #1a1a1a;
-  --color-surface-dark-hover: #2a2a2a;
-
-  /* Bordes */
-  --color-border: #e5e5e5;
-  --color-border-dark: #2a2a2a;
-
-  /* Acento sutil */
-  --color-accent: #202020;
-  --color-accent-foreground: #ffffff;
-
-  /* Status */
+  /* Status colors (same in both themes) */
   --color-success: #22c55e;
   --color-warning: #f59e0b;
   --color-error: #ef4444;
   --color-info: #3b82f6;
 
-  /* Tipografía */
+  /* Typography */
   --font-sans: var(--font-plus-jakarta);
 
-  /* Sidebar */
+  /* Layout */
   --sidebar-width: 260px;
   --sidebar-collapsed-width: 72px;
   --topbar-height: 64px;
 
-  /* Animaciones */
+  /* Easings */
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-:root {
-  --background: #ffffff;
-  --foreground: #202020;
-}
+/* ===================================================================
+   BASE STYLES
+   =================================================================== */
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #202020;
-    --foreground: #f5f5f5;
-  }
-}
-
-/* === Base === */
 * {
   box-sizing: border-box;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--th-bg);
+  color: var(--th-text);
   font-family: var(--font-inter, 'Inter', sans-serif);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* === Scrollbar personalizado === */
+option {
+  background: var(--th-surface);
+  color: var(--th-text);
+}
+
+/* ===================================================================
+   SCROLLBAR
+   =================================================================== */
+
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -88,17 +141,106 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-gray-300);
-  border-radius: 3px;
+  background: var(--th-scrollbar);
+  border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-gray-400);
+  background: var(--th-scrollbar-hover);
 }
 
-/* === Animaciones === */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--th-scrollbar);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--th-scrollbar-hover);
+}
+
+/* ===================================================================
+   GLASS UTILITIES
+   =================================================================== */
+
+.glass {
+  background: var(--th-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--th-glass-border);
+  box-shadow: var(--th-glass-shadow);
+}
+
+.glass-strong {
+  background: var(--th-glass-strong);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--th-glass-border);
+  box-shadow: var(--th-glass-shadow);
+}
+
+/* ===================================================================
+   BACKGROUND PATTERNS
+   =================================================================== */
+
+.bg-dots-pattern {
+  background-image: radial-gradient(var(--th-dot-pattern) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* ===================================================================
+   GLOW EFFECTS
+   =================================================================== */
+
+.glow-white-hover:hover {
+  box-shadow: 0 0 30px var(--th-subtle), 0 0 80px var(--th-subtle);
+}
+
+.glow-green {
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.15), 0 0 40px rgba(34, 197, 94, 0.05);
+}
+
+.glow-red {
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.15), 0 0 40px rgba(239, 68, 68, 0.05);
+}
+
+/* ===================================================================
+   GRADIENT BORDER ACCENT
+   =================================================================== */
+
+.border-l-gradient {
+  position: relative;
+}
+
+.border-l-gradient::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 2px;
+  border-radius: 2px;
+  background: linear-gradient(to bottom, var(--th-text-secondary), var(--th-text-faint));
+}
+
+/* ===================================================================
+   ANIMATIONS
+   =================================================================== */
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
@@ -122,8 +264,45 @@ body {
   to { transform: rotate(360deg); }
 }
 
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+@keyframes pulse-ring {
+  0% { opacity: 0.6; transform: scale(1); }
+  100% { opacity: 0; transform: scale(2.5); }
+}
+
+@keyframes number-in {
+  0% { opacity: 0; transform: translateY(10px); filter: blur(4px); }
+  100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+
+@keyframes underline-in {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes row-in {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes bar-grow {
+  from { width: 0%; }
+}
+
+@keyframes donut-draw {
+  from { stroke-dasharray: 0 999; }
+}
+
 .animate-fade-in {
   animation: fadeIn 0.4s var(--ease-smooth) both;
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.5s var(--ease-smooth) both;
 }
 
 .animate-slide-in-left {
@@ -142,14 +321,230 @@ body {
   animation: spin-slow 3s linear infinite;
 }
 
-/* Stagger children animations */
+.animate-pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+.animate-number-in {
+  animation: number-in 0.6s var(--ease-smooth) both;
+}
+
+.animate-row-in {
+  animation: row-in 0.3s var(--ease-smooth) both;
+}
+
+/* Stagger children */
 .stagger-children > * {
   animation: fadeIn 0.4s var(--ease-smooth) both;
 }
-
 .stagger-children > *:nth-child(1) { animation-delay: 0.05s; }
 .stagger-children > *:nth-child(2) { animation-delay: 0.1s; }
 .stagger-children > *:nth-child(3) { animation-delay: 0.15s; }
 .stagger-children > *:nth-child(4) { animation-delay: 0.2s; }
 .stagger-children > *:nth-child(5) { animation-delay: 0.25s; }
 .stagger-children > *:nth-child(6) { animation-delay: 0.3s; }
+
+/* Row stagger for tables */
+.stagger-rows > tr {
+  animation: row-in 0.3s var(--ease-smooth) both;
+}
+.stagger-rows > tr:nth-child(1) { animation-delay: 0.02s; }
+.stagger-rows > tr:nth-child(2) { animation-delay: 0.04s; }
+.stagger-rows > tr:nth-child(3) { animation-delay: 0.06s; }
+.stagger-rows > tr:nth-child(4) { animation-delay: 0.08s; }
+.stagger-rows > tr:nth-child(5) { animation-delay: 0.10s; }
+.stagger-rows > tr:nth-child(6) { animation-delay: 0.12s; }
+.stagger-rows > tr:nth-child(7) { animation-delay: 0.14s; }
+.stagger-rows > tr:nth-child(8) { animation-delay: 0.16s; }
+.stagger-rows > tr:nth-child(9) { animation-delay: 0.18s; }
+.stagger-rows > tr:nth-child(10) { animation-delay: 0.20s; }
+
+/* ===================================================================
+   COMPACT TABLE
+   =================================================================== */
+
+.table-compact {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.table-compact th {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--th-text-muted);
+  padding: 0.625rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--th-border);
+  position: sticky;
+  top: 0;
+  background: var(--th-surface);
+  z-index: 5;
+}
+
+.table-compact td {
+  font-size: 0.8125rem;
+  padding: 0.5rem 0.75rem;
+  color: var(--th-text-secondary);
+  border-bottom: 1px solid var(--th-border);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.table-compact tbody tr {
+  transition: background 0.15s ease;
+}
+
+.table-compact tbody tr:hover {
+  background: var(--th-subtle-hover);
+}
+
+.table-compact tbody tr:nth-child(even) {
+  background: var(--th-subtle);
+}
+
+.table-compact tbody tr:nth-child(even):hover {
+  background: var(--th-subtle-hover);
+}
+
+/* ===================================================================
+   LIVE INDICATOR
+   =================================================================== */
+
+.live-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #ef4444;
+}
+
+.live-dot {
+  position: relative;
+  width: 6px;
+  height: 6px;
+}
+
+.live-dot::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: #ef4444;
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+.live-dot::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1px solid #ef4444;
+  animation: pulse-ring 1.5s ease-out infinite;
+}
+
+/* ===================================================================
+   STATUS DOTS
+   =================================================================== */
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-dot-online {
+  background: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.4);
+}
+
+.status-dot-offline {
+  background: #ef4444;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.4);
+}
+
+/* ===================================================================
+   TAB UNDERLINE
+   =================================================================== */
+
+.tab-active-underline {
+  position: relative;
+}
+
+.tab-active-underline::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--th-text);
+  border-radius: 2px 2px 0 0;
+  animation: underline-in 0.3s var(--ease-smooth) both;
+  transform-origin: left;
+}
+
+/* ===================================================================
+   SPARKLINE DECORATION
+   =================================================================== */
+
+.sparkline-decoration {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  opacity: 1;
+  pointer-events: none;
+}
+
+.sparkline-decoration path {
+  stroke: var(--th-sparkline);
+}
+
+/* ===================================================================
+   CHART BARS
+   =================================================================== */
+
+.chart-bar-track {
+  background: var(--th-chart-track);
+  border-radius: 4px;
+  overflow: hidden;
+  height: 8px;
+}
+
+.chart-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.8s var(--ease-spring);
+}
+
+.chart-bar-1 { background: var(--th-chart-1); }
+.chart-bar-2 { background: var(--th-chart-2); }
+.chart-bar-3 { background: var(--th-chart-3); }
+.chart-bar-4 { background: var(--th-chart-4); }
+
+/* ===================================================================
+   DONUT CHART
+   =================================================================== */
+
+.donut-segment {
+  transition: stroke-dasharray 1s var(--ease-smooth), stroke-dashoffset 1s var(--ease-smooth);
+}
+
+.donut-track {
+  stroke: var(--th-chart-track);
+}
+
+.donut-text-primary {
+  fill: var(--th-text);
+}
+
+.donut-text-secondary {
+  fill: var(--th-text-muted);
+}

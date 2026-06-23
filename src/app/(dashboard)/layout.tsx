@@ -38,13 +38,13 @@ export default async function DashboardLayout({
     .order("created_at", { ascending: true });
 
   return (
-    <div className="min-h-screen bg-black text-white font-sans flex">
+    <div className="min-h-screen bg-th-bg text-th-text font-sans flex transition-colors duration-300">
       {/* Sidebar Colapsable Pasándole los servicios de la BD */}
       <Sidebar services={services || []} />
 
       {/* Main Content Area */}
       <div className="flex-1 min-h-screen flex flex-col md:pl-64 transition-all duration-300">
-        <main className="p-4 md:p-8 flex-1 max-w-7xl w-full mx-auto mt-14 md:mt-0 animate-fade-in-up">
+        <main className="p-4 md:p-8 flex-1 max-w-7xl w-full mx-auto mt-14 md:mt-0 bg-dots-pattern">
           {children}
         </main>
       </div>

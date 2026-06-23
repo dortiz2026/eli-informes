@@ -1,11 +1,12 @@
 import "@/app/globals.css";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import type { Metadata } from "next";
+import { ThemeProvider } from "@/_components/ThemeProvider";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   variable: "--font-plus-jakarta",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600"],
+  weight: ["300", "400", "500", "600", "700"],
   display: "swap",
 });
 
@@ -28,9 +29,11 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es" className="dark h-full">
-      <body className={`${plusJakartaSans.variable} bg-black text-white h-full antialiased font-sans`}>
-        {children}
+    <html lang="es" className="h-full" data-theme="dark" suppressHydrationWarning>
+      <body className={`${plusJakartaSans.variable} h-full antialiased font-sans`}>
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

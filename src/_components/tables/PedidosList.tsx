@@ -1,106 +1,299 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { formatCurrency } from "@/_lib/utils";
+import { useState } from "react";
+
+interface Order {
+  order_no: string;
+  creation_date: string;
+  order_total: number;
+  payment_status: string;
+  shipping_status: string;
+  city: string;
+  shipping_method: string;
+}
+
+interface StoreData {
+  storeId: string;
+  storeName: string;
+  success: boolean;
+  error?: string;
+  orders?: Order[];
+}
 
 interface PedidosListProps {
-  stores: any[];
+  stores: StoreData[];
 }
 
 export default function PedidosList({ stores }: PedidosListProps) {
   const [selectedStore, setSelectedStore] = useState<string>("all");
 
-  const filteredStores = selectedStore === "all"
-    ? stores
-    : stores.filter(s => s.storeId === selectedStore);
-
-  // Totales generales (solo cantidad de pedidos, no montos)
+  // Totales generales
   const totalOrders = stores.reduce((acc, s) => acc + (s.orders?.length || 0), 0);
+  const storesWithErrors = stores.filter((s) => !s.success);
+  const storesOnline = stores.filter((s) => s.success);
+
+  // Filtered data
+  const filteredStores =
+    selectedStore === "all" ? stores : stores.filter((s) => s.storeId === selectedStore);
+
+  // All orders flattened for table view
+  const allOrders = filteredStores
+    .flatMap((store) =>
+      (store.orders || []).map((order) => ({
+        ...order,
+        storeName: store.storeName,
+        storeId: store.storeId,
+      }))
+    )
+    .sort((a, b) => new Date(b.creation_date).getTime() - new Date(a.creation_date).getTime());
+
+  const formatDate = (dateString: string): string => {
+    return new Date(dateString).toLocaleString("es-CO", {
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const formatRelativeDate = (dateString: string): string => {
+    const now = new Date();
+    const date = new Date(dateString);
+    const diffMs = now.getTime() - date.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffHours < 1) return "< 1h";
+    if (diffHours < 24) return `${diffHours}h`;
+    return `${diffDays}d`;
+  };
+
+  const getAgeColor = (dateString: string): string => {
+    const hours = Math.floor(
+      (Date.now() - new Date(dateString).getTime()) / (1000 * 60 * 60)
+    );
+    if (hours >= 48) return "bg-error/10 text-error border border-error/10";
+    if (hours >= 24) return "bg-warning/10 text-warning border border-warning/10";
+    return "bg-th-subtle text-th-text-muted border border-th-border";
+  };
 
   return (
-    <div className="space-y-6">
-      {/* 1. Cards de Resumen General (Ajustado a 2 columnas) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="p-6 bg-gray-900 border border-gray-800 rounded-xl relative overflow-hidden">
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Total Pedidos Pendientes</p>
-          <p className="text-3xl font-bold text-white">{totalOrders}</p>
+    <div className="space-y-3">
+      {/* 1. Summary Bar */}
+      <div className="flex flex-wrap items-center gap-3 glass rounded-xl px-4 py-3">
+        {/* Total */}
+        <div className="flex items-center gap-2">
+          <span className="text-2xl font-bold text-th-text animate-number-in tabular-nums">
+            {totalOrders}
+          </span>
+          <span className="text-[10px] uppercase tracking-wider text-th-text-muted leading-tight">
+            pedidos
+            <br />
+            pendientes
+          </span>
         </div>
-        <div className="p-6 bg-gray-900 border border-gray-800 rounded-xl relative overflow-hidden">
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Filtro por Tienda</p>
-          <select
-            value={selectedStore}
-            onChange={(e) => setSelectedStore(e.target.value)}
-            className="mt-1 w-full bg-black border border-gray-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-white transition-all"
-          >
-            <option value="all">Todas las Tiendas</option>
-            {stores.map(s => (
-              <option key={s.storeId} value={s.storeId}>{s.storeName}</option>
-            ))}
-          </select>
-        </div>
-      </div>
 
-      {/* 2. Grid de Tiendas */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {filteredStores.map((store) => (
-          <div key={store.storeId} className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden flex flex-col h-[400px]">
-            {/* Header de Tienda */}
-            <div className="p-4 bg-gray-950 border-b border-gray-800 flex justify-between items-center">
-              <div>
-                <h3 className="font-semibold text-white">{store.storeName}</h3>
-                <p className="text-xs text-gray-500">
-                  {store.success ? "Conectado correctamente" : "Fallo de conexión"}
-                </p>
-              </div>
-              <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                store.success 
-                  ? "bg-green-950/40 text-green-400 border border-green-900/30"
-                  : "bg-red-950/40 text-red-400 border border-red-900/30"
-              }`}>
-                {store.orders?.length || 0} pedidos
+        {/* Separator */}
+        <div className="w-px h-8 bg-th-border" />
+
+        {/* Per-store chips */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          {stores.map((store) => (
+            <div
+              key={store.storeId}
+              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-th-subtle border border-th-border"
+            >
+              <span
+                className={`status-dot ${
+                  store.success ? "status-dot-online" : "status-dot-offline"
+                }`}
+              />
+              <span className="text-[11px] text-th-text-secondary font-medium">
+                {store.storeName}
+              </span>
+              <span className="text-[11px] text-th-text font-bold tabular-nums">
+                {store.orders?.length || 0}
               </span>
             </div>
+          ))}
+        </div>
 
-            {/* Contenido / Lista de Pedidos */}
-            <div className="p-4 flex-1 overflow-y-auto custom-scrollbar">
-              {store.error && (
-                <div className="p-4 bg-red-950/20 border border-red-900/20 text-red-400 rounded-lg text-sm text-center">
-                  Error: {store.error}
-                </div>
-              )}
-
-              {!store.error && (!store.orders || store.orders.length === 0) && (
-                <div className="h-full flex items-center justify-center text-gray-600 text-sm">
-                  Sin pedidos pendientes
-                </div>
-              )}
-
-              {!store.error && store.orders && store.orders.length > 0 && (
-                <div className="space-y-3">
-                  {store.orders.map((order: any) => (
-                    <div key={order.order_no} className="p-3 bg-black/40 border border-gray-800/60 rounded-lg flex justify-between items-center text-sm hover:border-gray-700 transition-colors">
-                      <div>
-                        <p className="font-semibold text-white">#{order.order_no}</p>
-                        <p className="text-xs text-gray-500">
-                          {new Date(order.creation_date).toLocaleString("es-CO", {
-                            dateStyle: "short",
-                            timeStyle: "short"
-                          })} - {order.city}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-[10px] uppercase tracking-wider text-gray-400 px-1.5 py-0.5 bg-gray-800/40 border border-gray-800 rounded">
-                          {order.shipping_method}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
+        {/* Status */}
+        <div className="ml-auto hidden sm:flex items-center gap-2 text-[10px]">
+          <span className="text-success/80">{storesOnline.length} online</span>
+          {storesWithErrors.length > 0 && (
+            <span className="text-error">{storesWithErrors.length} error</span>
+          )}
+        </div>
       </div>
+
+      {/* 2. Store Errors */}
+      {storesWithErrors.length > 0 && (
+        <div className="space-y-2">
+          {storesWithErrors.map((store) => (
+            <div
+              key={store.storeId}
+              className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-error/[0.04] border border-error/[0.08] glow-red"
+            >
+              <span className="status-dot status-dot-offline" />
+              <div className="flex-1 min-w-0">
+                <span className="text-xs font-medium text-error/80">
+                  {store.storeName}
+                </span>
+                <span className="text-[11px] text-error/50 ml-2">{store.error}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 3. Tab Bar */}
+      <div className="flex items-center border-b border-th-border overflow-x-auto custom-scrollbar">
+        <button
+          onClick={() => setSelectedStore("all")}
+          className={`relative flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-colors whitespace-nowrap ${
+            selectedStore === "all"
+              ? "text-th-text tab-active-underline"
+              : "text-th-text-muted hover:text-th-text-secondary"
+          }`}
+        >
+          Todas
+          <span
+            className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+              selectedStore === "all"
+                ? "bg-th-subtle-hover text-th-text"
+                : "bg-th-subtle text-th-text-muted"
+            }`}
+          >
+            {totalOrders}
+          </span>
+        </button>
+
+        {stores
+          .filter((s) => s.success)
+          .map((store) => (
+            <button
+              key={store.storeId}
+              onClick={() => setSelectedStore(store.storeId)}
+              className={`relative flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-colors whitespace-nowrap ${
+                selectedStore === store.storeId
+                  ? "text-th-text tab-active-underline"
+                  : "text-th-text-muted hover:text-th-text-secondary"
+              }`}
+            >
+              {store.storeName}
+              <span
+                className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                  selectedStore === store.storeId
+                    ? "bg-th-subtle-hover text-th-text"
+                    : "bg-th-subtle text-th-text-muted"
+                }`}
+              >
+                {store.orders?.length || 0}
+              </span>
+            </button>
+          ))}
+      </div>
+
+      {/* 4. Compact Table */}
+      {allOrders.length > 0 ? (
+        <div className="glass rounded-xl overflow-hidden">
+          <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-340px)] custom-scrollbar">
+            <table className="table-compact">
+              <thead>
+                <tr>
+                  <th className="w-[120px]"># Orden</th>
+                  <th className="w-[100px]">Fecha</th>
+                  <th className="w-[80px]">Antigüedad</th>
+                  <th>Ciudad</th>
+                  <th>Envío</th>
+                  {selectedStore === "all" && <th>Tienda</th>}
+                </tr>
+              </thead>
+              <tbody className="stagger-rows">
+                {allOrders.map((order) => (
+                  <tr key={`${order.storeId}-${order.order_no}`}>
+                    <td>
+                      <span className="font-semibold text-th-text text-[13px]">
+                        #{order.order_no}
+                      </span>
+                    </td>
+                    <td>
+                      <span className="text-th-text-secondary">
+                        {formatDate(order.creation_date)}
+                      </span>
+                    </td>
+                    <td>
+                      <span
+                        className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${getAgeColor(
+                          order.creation_date
+                        )}`}
+                      >
+                        {formatRelativeDate(order.creation_date)}
+                      </span>
+                    </td>
+                    <td>
+                      <span className="text-th-text-secondary">
+                        {order.city || "—"}
+                      </span>
+                    </td>
+                    <td>
+                      <span className="text-[10px] uppercase tracking-wider text-th-text-muted px-1.5 py-0.5 bg-th-subtle border border-th-border rounded">
+                        {order.shipping_method || "—"}
+                      </span>
+                    </td>
+                    {selectedStore === "all" && (
+                      <td>
+                        <span className="text-[11px] text-th-text-secondary font-medium">
+                          {order.storeName}
+                        </span>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Table footer */}
+          <div className="flex items-center justify-between px-4 py-2.5 border-t border-th-border bg-th-subtle">
+            <span className="text-[10px] text-th-text-faint">
+              Mostrando {allOrders.length} de {totalOrders} pedidos
+            </span>
+            <span className="text-[10px] text-th-text-faint">
+              {selectedStore === "all"
+                ? `${storesOnline.length} tiendas`
+                : filteredStores[0]?.storeName}
+            </span>
+          </div>
+        </div>
+      ) : (
+        /* Empty State */
+        <div className="flex flex-col items-center justify-center py-16 glass rounded-xl">
+          <svg
+            className="w-16 h-16 text-th-text-faint mb-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            strokeWidth={0.75}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
+            />
+          </svg>
+          <p className="text-sm text-th-text-muted font-medium">
+            Sin pedidos pendientes
+          </p>
+          <p className="text-[11px] text-th-text-faint mt-1">
+            {selectedStore === "all"
+              ? "No hay pedidos pendientes en ninguna tienda."
+              : `No hay pedidos pendientes para ${
+                  filteredStores[0]?.storeName || "esta tienda"
+                }.`}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
