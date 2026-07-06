@@ -24,8 +24,11 @@ interface PedidosListProps {
   stores: StoreData[];
 }
 
+const PAGE_SIZE = 50;
+
 export default function PedidosList({ stores }: PedidosListProps) {
   const [selectedStore, setSelectedStore] = useState<string>("all");
+  const [page, setPage] = useState(1);
 
   // Totales generales
   const totalOrders = stores.reduce((acc, s) => acc + (s.orders?.length || 0), 0);
@@ -46,6 +49,18 @@ export default function PedidosList({ stores }: PedidosListProps) {
       }))
     )
     .sort((a, b) => new Date(b.creation_date).getTime() - new Date(a.creation_date).getTime());
+
+  const totalPages = Math.max(1, Math.ceil(allOrders.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pagedOrders = allOrders.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+
+  const handleSelectStore = (storeId: string) => {
+    setSelectedStore(storeId);
+    setPage(1);
+  };
 
   const formatDate = (dateString: string): string => {
     return new Date(dateString).toLocaleString("es-CO", {
@@ -149,7 +164,7 @@ export default function PedidosList({ stores }: PedidosListProps) {
       {/* 3. Tab Bar */}
       <div className="flex items-center border-b border-th-border overflow-x-auto custom-scrollbar">
         <button
-          onClick={() => setSelectedStore("all")}
+          onClick={() => handleSelectStore("all")}
           className={`relative flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-colors whitespace-nowrap ${
             selectedStore === "all"
               ? "text-th-text tab-active-underline"
@@ -173,7 +188,7 @@ export default function PedidosList({ stores }: PedidosListProps) {
           .map((store) => (
             <button
               key={store.storeId}
-              onClick={() => setSelectedStore(store.storeId)}
+              onClick={() => handleSelectStore(store.storeId)}
               className={`relative flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-colors whitespace-nowrap ${
                 selectedStore === store.storeId
                   ? "text-th-text tab-active-underline"
@@ -210,7 +225,7 @@ export default function PedidosList({ stores }: PedidosListProps) {
                 </tr>
               </thead>
               <tbody className="stagger-rows">
-                {allOrders.map((order) => (
+                {pagedOrders.map((order) => (
                   <tr key={`${order.storeId}-${order.order_no}`}>
                     <td>
                       <span className="font-semibold text-th-text text-[13px]">
@@ -257,13 +272,38 @@ export default function PedidosList({ stores }: PedidosListProps) {
           {/* Table footer */}
           <div className="flex items-center justify-between px-4 py-2.5 border-t border-th-border bg-th-subtle">
             <span className="text-[10px] text-th-text-faint">
-              Mostrando {allOrders.length} de {totalOrders} pedidos
+              Mostrando {pagedOrders.length ? (currentPage - 1) * PAGE_SIZE + 1 : 0}
+              –{(currentPage - 1) * PAGE_SIZE + pagedOrders.length} de {allOrders.length} pedidos
             </span>
-            <span className="text-[10px] text-th-text-faint">
-              {selectedStore === "all"
-                ? `${storesOnline.length} tiendas`
-                : filteredStores[0]?.storeName}
-            </span>
+
+            <div className="flex items-center gap-3">
+              {totalPages > 1 && (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-2 py-1 rounded text-[10px] font-medium text-th-text-secondary bg-th-subtle-hover border border-th-border disabled:opacity-30 disabled:cursor-not-allowed hover:bg-th-border transition-colors"
+                  >
+                    ‹
+                  </button>
+                  <span className="text-[10px] text-th-text-faint px-1 tabular-nums">
+                    {currentPage} / {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-2 py-1 rounded text-[10px] font-medium text-th-text-secondary bg-th-subtle-hover border border-th-border disabled:opacity-30 disabled:cursor-not-allowed hover:bg-th-border transition-colors"
+                  >
+                    ›
+                  </button>
+                </div>
+              )}
+              <span className="text-[10px] text-th-text-faint">
+                {selectedStore === "all"
+                  ? `${storesOnline.length} tiendas`
+                  : filteredStores[0]?.storeName}
+              </span>
+            </div>
           </div>
         </div>
       ) : (
