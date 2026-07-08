@@ -47,12 +47,18 @@ export async function GET(request: NextRequest) {
             error: null
           };
         } catch (orderErr: any) {
-          // Si el error es 401 o 403, el token puede estar expirado.
+          // Solo un 401 (Unauthorized) indica que el token realmente expiró.
           // Invalidar caché y reintentar UNA sola vez con un token fresco.
           // El lock de deduplicación en getAccessToken() asegura que, aunque
           // varias tiendas fallen al mismo tiempo, solo se pida UN token
           // nuevo a Salesforce (las demás reutilizan esa misma promesa).
-          if (orderErr.message?.includes("(401)") || orderErr.message?.includes("(403)")) {
+          //
+          // Un 403 NO dispara este flujo: puede ser un bloqueo de Cloudflare
+          // (challenge/WAF) específico de esa tienda, y pedir un token nuevo
+          // no lo soluciona — solo tiraría a la basura el token global que
+          // las demás tiendas SÍ están usando con éxito, y volvería a golpear
+          // el endpoint bloqueado en cada polling, empeorando el bloqueo.
+          if (orderErr.message?.includes("(401)")) {
             try {
               invalidateToken();
               const freshToken = await getAccessToken(store.ocapi_host);

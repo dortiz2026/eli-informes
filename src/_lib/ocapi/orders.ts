@@ -81,7 +81,7 @@ async function fetchPage(url: string, accessToken: string, start: number): Promi
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
+    const errorText = (await response.text()).slice(0, 300);
     throw new Error(`OCAPI order search error (${response.status}): ${errorText}`);
   }
 

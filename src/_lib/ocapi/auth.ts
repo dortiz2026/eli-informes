@@ -90,7 +90,7 @@ async function fetchNewToken(host: string): Promise<OcapiTokenResponse> {
   );
 
   if (!response.ok) {
-    const errorText = await response.text();
+    const errorText = (await response.text()).slice(0, 300);
     throw new Error(
       `Failed to get access token from ${host}: ${response.status} ${errorText}`
     );
