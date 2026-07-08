@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 
-// Límites de auto-actualización: nunca menos de 5 min ni más de 30 min,
-// para no saturar de peticiones a Salesforce.
+// Límites de auto-actualización: mínimo 5 min, máximo 30 min, para no
+// saturar de peticiones a OCAPI/Salesforce sin importar quién lo configure.
 const MIN_INTERVAL_MS = 5 * 60 * 1000;
 const MAX_INTERVAL_MS = 30 * 60 * 1000;
 
@@ -12,7 +12,7 @@ const clampInterval = (ms: number): number =>
 
 interface UseRealtimeOptions<T> {
   url: string;
-  intervalMs?: number; // Configurable polling interval (clamp: 5 min - 30 min)
+  intervalMs?: number; // Intervalo de polling (se limita a 5-30 min)
   enabled?: boolean;
 }
 

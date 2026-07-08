@@ -1,6 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+
+// Clave de día local (YYYY-MM-DD) a partir de la fecha de creación del pedido
+const toDateKey = (dateString: string): string => {
+  const d = new Date(dateString);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
+
+// Etiqueta corta para mostrar el día (ej. "dom 06 jul")
+const formatDayLabel = (dateKey: string): string => {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("es-CO", {
+    weekday: "short",
+    day: "2-digit",
+    month: "short",
+  });
+};
 
 interface Order {
   order_no: string;
@@ -26,17 +45,8 @@ interface PedidosListProps {
 
 const PAGE_SIZE = 50;
 
-const toDateKey = (dateString: string): string => {
-  const d = new Date(dateString);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-};
-
 export default function PedidosList({ stores }: PedidosListProps) {
   const [selectedStore, setSelectedStore] = useState<string>("all");
-  const [selectedDate, setSelectedDate] = useState<string>("");
   const [page, setPage] = useState(1);
 
   // Totales generales
@@ -59,36 +69,9 @@ export default function PedidosList({ stores }: PedidosListProps) {
     )
     .sort((a, b) => new Date(b.creation_date).getTime() - new Date(a.creation_date).getTime());
 
-  // Filtro por fecha (día exacto elegido por el usuario)
-  const displayOrders = selectedDate
-    ? allOrders.filter((order) => toDateKey(order.creation_date) === selectedDate)
-    : allOrders;
-
-  // Cantidad de pedidos por día (según tienda seleccionada, independiente del filtro de fecha)
-  const ordersByDay = Object.entries(
-    allOrders.reduce<Record<string, number>>((acc, order) => {
-      const key = toDateKey(order.creation_date);
-      acc[key] = (acc[key] || 0) + 1;
-      return acc;
-    }, {})
-  )
-    .map(([date, count]) => ({ date, count }))
-    .sort((a, b) => (a.date < b.date ? 1 : -1));
-
-  const maxDayCount = Math.max(...ordersByDay.map((d) => d.count), 1);
-
-  const formatDayLabel = (dateKey: string): string => {
-    const [y, m, d] = dateKey.split("-").map(Number);
-    return new Date(y, m - 1, d).toLocaleDateString("es-CO", {
-      weekday: "short",
-      day: "2-digit",
-      month: "short",
-    });
-  };
-
-  const totalPages = Math.max(1, Math.ceil(displayOrders.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(allOrders.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
-  const pagedOrders = displayOrders.slice(
+  const pagedOrders = allOrders.slice(
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE
   );
@@ -98,10 +81,27 @@ export default function PedidosList({ stores }: PedidosListProps) {
     setPage(1);
   };
 
-  const handleSelectDate = (date: string) => {
-    setSelectedDate(date);
-    setPage(1);
-  };
+  // Contador acumulado de pedidos por día para la marca seleccionada.
+  // useMemo => se recalcula SOLO cuando llegan datos nuevos (nuevo `stores`)
+  // o cambia la tienda seleccionada; entre renders queda "cacheado".
+  const ordersByDay = useMemo(() => {
+    const relevant =
+      selectedStore === "all"
+        ? stores
+        : stores.filter((s) => s.storeId === selectedStore);
+
+    const counts = new Map<string, number>();
+    for (const store of relevant) {
+      for (const order of store.orders || []) {
+        const key = toDateKey(order.creation_date);
+        counts.set(key, (counts.get(key) || 0) + 1);
+      }
+    }
+
+    return Array.from(counts.entries())
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => (a.date < b.date ? 1 : -1)); // más reciente primero
+  }, [stores, selectedStore]);
 
   const formatDate = (dateString: string): string => {
     return new Date(dateString).toLocaleString("es-CO", {
@@ -202,120 +202,81 @@ export default function PedidosList({ stores }: PedidosListProps) {
         </div>
       )}
 
-      {/* 3. Tab Bar + Date Filter */}
-      <div className="flex items-center justify-between gap-3 border-b border-th-border">
-        <div className="flex items-center overflow-x-auto custom-scrollbar">
-          <button
-            onClick={() => handleSelectStore("all")}
-            className={`relative flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-colors whitespace-nowrap ${
+      {/* 3. Tab Bar */}
+      <div className="flex items-center border-b border-th-border overflow-x-auto custom-scrollbar">
+        <button
+          onClick={() => handleSelectStore("all")}
+          className={`relative flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-colors whitespace-nowrap ${
+            selectedStore === "all"
+              ? "text-th-text tab-active-underline"
+              : "text-th-text-muted hover:text-th-text-secondary"
+          }`}
+        >
+          Todas
+          <span
+            className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
               selectedStore === "all"
-                ? "text-th-text tab-active-underline"
-                : "text-th-text-muted hover:text-th-text-secondary"
+                ? "bg-th-subtle-hover text-th-text"
+                : "bg-th-subtle text-th-text-muted"
             }`}
           >
-            Todas
-            <span
-              className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                selectedStore === "all"
-                  ? "bg-th-subtle-hover text-th-text"
-                  : "bg-th-subtle text-th-text-muted"
+            {totalOrders}
+          </span>
+        </button>
+
+        {stores
+          .filter((s) => s.success)
+          .map((store) => (
+            <button
+              key={store.storeId}
+              onClick={() => handleSelectStore(store.storeId)}
+              className={`relative flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-colors whitespace-nowrap ${
+                selectedStore === store.storeId
+                  ? "text-th-text tab-active-underline"
+                  : "text-th-text-muted hover:text-th-text-secondary"
               }`}
             >
-              {totalOrders}
-            </span>
-          </button>
-
-          {stores
-            .filter((s) => s.success)
-            .map((store) => (
-              <button
-                key={store.storeId}
-                onClick={() => handleSelectStore(store.storeId)}
-                className={`relative flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-colors whitespace-nowrap ${
+              {store.storeName}
+              <span
+                className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
                   selectedStore === store.storeId
-                    ? "text-th-text tab-active-underline"
-                    : "text-th-text-muted hover:text-th-text-secondary"
+                    ? "bg-th-subtle-hover text-th-text"
+                    : "bg-th-subtle text-th-text-muted"
                 }`}
               >
-                {store.storeName}
-                <span
-                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                    selectedStore === store.storeId
-                      ? "bg-th-subtle-hover text-th-text"
-                      : "bg-th-subtle text-th-text-muted"
-                  }`}
-                >
-                  {store.orders?.length || 0}
-                </span>
-              </button>
-            ))}
-        </div>
-
-        {/* Date filter */}
-        <div className="flex items-center gap-1.5 pr-1 shrink-0">
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => handleSelectDate(e.target.value)}
-            className="text-[11px] px-2 py-1.5 rounded-md bg-th-subtle border border-th-border text-th-text-secondary focus:outline-none focus:ring-1 focus:ring-th-border"
-          />
-          {selectedDate && (
-            <button
-              onClick={() => handleSelectDate("")}
-              className="text-[10px] px-2 py-1.5 rounded-md bg-th-subtle border border-th-border text-th-text-muted hover:text-th-text-secondary hover:bg-th-subtle-hover transition-colors"
-            >
-              Limpiar
+                {store.orders?.length || 0}
+              </span>
             </button>
-          )}
-        </div>
+          ))}
       </div>
 
-      {/* 4. Pedidos por día */}
+      {/* 4. Contador acumulado por día (solo lectura, no filtra) */}
       {ordersByDay.length > 0 && (
         <div className="glass rounded-xl px-4 py-3">
-          <p className="text-[10px] uppercase tracking-wider text-th-text-muted mb-2.5">
+          <p className="text-[10px] uppercase tracking-wider text-th-text-muted mb-2">
             Pedidos por día
             {selectedStore !== "all" && ` · ${filteredStores[0]?.storeName || ""}`}
           </p>
-          <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar pr-1">
-            {ordersByDay.map(({ date, count }) => {
-              const pct = (count / maxDayCount) * 100;
-              const isSelected = selectedDate === date;
-              return (
-                <button
-                  key={date}
-                  onClick={() => handleSelectDate(isSelected ? "" : date)}
-                  className={`w-full text-left rounded-md px-1.5 py-1 transition-colors ${
-                    isSelected ? "bg-th-subtle-hover" : "hover:bg-th-subtle"
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span
-                      className={`text-[11px] capitalize ${
-                        isSelected ? "text-th-text font-semibold" : "text-th-text-secondary font-medium"
-                      }`}
-                    >
-                      {formatDayLabel(date)}
-                    </span>
-                    <span className="text-[11px] font-bold text-th-text tabular-nums">
-                      {count}
-                    </span>
-                  </div>
-                  <div className="chart-bar-track">
-                    <div
-                      className="chart-bar-fill chart-bar-1"
-                      style={{ width: `${Math.max(pct, 2)}%` }}
-                    />
-                  </div>
-                </button>
-              );
-            })}
+          <div className="flex flex-wrap gap-1.5">
+            {ordersByDay.map(({ date, count }) => (
+              <div
+                key={date}
+                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-th-subtle border border-th-border"
+              >
+                <span className="text-[11px] text-th-text-secondary font-medium capitalize">
+                  {formatDayLabel(date)}
+                </span>
+                <span className="text-[11px] text-th-text font-bold tabular-nums">
+                  {count}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       )}
 
       {/* 5. Compact Table */}
-      {displayOrders.length > 0 ? (
+      {allOrders.length > 0 ? (
         <div className="glass rounded-xl overflow-hidden">
           <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-340px)] custom-scrollbar">
             <table className="table-compact">
@@ -378,7 +339,7 @@ export default function PedidosList({ stores }: PedidosListProps) {
           <div className="flex items-center justify-between px-4 py-2.5 border-t border-th-border bg-th-subtle">
             <span className="text-[10px] text-th-text-faint">
               Mostrando {pagedOrders.length ? (currentPage - 1) * PAGE_SIZE + 1 : 0}
-              –{(currentPage - 1) * PAGE_SIZE + pagedOrders.length} de {displayOrders.length} pedidos
+              –{(currentPage - 1) * PAGE_SIZE + pagedOrders.length} de {allOrders.length} pedidos
             </span>
 
             <div className="flex items-center gap-3">
@@ -431,11 +392,7 @@ export default function PedidosList({ stores }: PedidosListProps) {
             Sin pedidos pendientes
           </p>
           <p className="text-[11px] text-th-text-faint mt-1">
-            {selectedDate
-              ? `No hay pedidos para el ${selectedDate}${
-                  selectedStore === "all" ? "" : ` en ${filteredStores[0]?.storeName || "esta tienda"}`
-                }.`
-              : selectedStore === "all"
+            {selectedStore === "all"
               ? "No hay pedidos pendientes en ninguna tienda."
               : `No hay pedidos pendientes para ${
                   filteredStores[0]?.storeName || "esta tienda"

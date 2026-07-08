@@ -2,12 +2,8 @@ import "server-only";
 import type { OcapiTokenResponse } from "@/_lib/definitions";
 
 // ==================== Token Cache (Global Único) ====================
-// El access_token de OCAPI NO está ligado a una tienda: un mismo token
-// sirve para consultar cualquiera de las tiendas configuradas. Por eso
-// se cachea UNA sola vez en memoria y se reutiliza para todas, hasta
-// que esté por vencer: nunca se vuelve a pedir por refrescar la página,
-// cambiar de tienda en el UI o por el polling en tiempo real — solo
-// cuando expira o Salesforce lo rechaza (401/403).
+// UN solo token sirve para todas las tiendas.
+// Duración mínima: 10 minutos. Renovamos con 2 minutos de margen.
 
 interface CachedToken {
   accessToken: string;
@@ -20,8 +16,7 @@ let cachedToken: CachedToken | null = null;
 const EXPIRY_MARGIN_MS = 2 * 60 * 1000;
 
 /**
- * Lock de deduplicación: si ya hay una solicitud de token en vuelo
- * (ej. varias tiendas consultadas en paralelo, o pollings simultáneos),
+ * Lock de deduplicación: si ya hay una solicitud de token en vuelo,
  * las peticiones concurrentes esperan la misma promesa en lugar de
  * disparar solicitudes duplicadas a Salesforce.
  */
@@ -30,9 +25,8 @@ let pendingRequest: Promise<OcapiTokenResponse> | null = null;
 // ==================== Public API ====================
 
 /**
- * Obtiene el token de acceso OCAPI global, usando caché en memoria
- * hasta que esté por vencer.
- * @param host - Host de cualquier tienda (solo se usa si hay que pedir un token nuevo)
+ * Obtiene el token de acceso global para OCAPI.
+ * @param host - Host de cualquier tienda (solo se usa si necesita pedir un token nuevo)
  */
 export async function getAccessToken(host: string): Promise<OcapiTokenResponse> {
   // 1. Verificar si hay un token válido en caché
@@ -56,7 +50,7 @@ export async function getAccessToken(host: string): Promise<OcapiTokenResponse> 
   }
 }
 
-/** Invalida el token en caché (ej. tras un 401/403) */
+/** Invalida el token en caché (por ejemplo, tras un 401/403) */
 export function invalidateToken(): void {
   cachedToken = null;
 }
@@ -98,7 +92,7 @@ async function fetchNewToken(host: string): Promise<OcapiTokenResponse> {
 
   const tokenData = await response.json() as OcapiTokenResponse;
 
-  // Guardar en caché global. Usar expires_in de la respuesta, o 1800s (30 min) por defecto
+  // Guardar en caché. Usar expires_in de la respuesta, o 1800s (30 min) por defecto
   const expiresIn = tokenData.expires_in || 1800;
   cachedToken = {
     accessToken: tokenData.access_token,

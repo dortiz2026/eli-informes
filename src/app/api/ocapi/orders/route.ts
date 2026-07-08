@@ -21,21 +21,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ stores: [] });
     }
 
-    // 2. Obtener UN SOLO token global (el mismo access_token sirve para
-    //    consultar cualquiera de las tiendas, no está ligado al host)
+    // 2. Obtener UN SOLO token global (sirve para todas las tiendas)
     const tokenRes = await getAccessToken(stores[0].ocapi_host);
+    let accessToken = tokenRes.access_token;
 
-    // 3. Consultar pedidos en paralelo para cada tienda usando el mismo
-    //    token. Cada callback usa su propia constante local (nunca muta
-    //    una variable compartida) para no pisar el token que estén
-    //    usando las demás tiendas en paralelo.
+    // 3. Consultar pedidos en paralelo para cada tienda usando el mismo token
     const results = await Promise.all(
       stores.map(async (store) => {
         try {
           const orders = await searchPendingOrders(
             store.ocapi_host,
             store.ocapi_site,
-            tokenRes.access_token
+            accessToken
           );
 
           return {
@@ -47,30 +44,25 @@ export async function GET(request: NextRequest) {
             error: null
           };
         } catch (orderErr: any) {
-          // Solo un 401 (Unauthorized) indica que el token realmente expiró.
-          // Invalidar caché y reintentar UNA sola vez con un token fresco.
-          // El lock de deduplicación en getAccessToken() asegura que, aunque
-          // varias tiendas fallen al mismo tiempo, solo se pida UN token
-          // nuevo a Salesforce (las demás reutilizan esa misma promesa).
+          // Solo un 401 (Unauthorized) significa que el token realmente expiró:
+          // invalidar el caché global y reintentar UNA sola vez con un token fresco,
+          // pedido SIEMPRE contra el host de la primera tienda (host estable), nunca
+          // contra el host de la tienda que falló.
           //
-          // Un 403 NO dispara este flujo: puede ser un bloqueo de Cloudflare
-          // (challenge/WAF) específico de esa tienda, y pedir un token nuevo
-          // no lo soluciona — solo tiraría a la basura el token global que
-          // las demás tiendas SÍ están usando con éxito, y volvería a golpear
-          // el endpoint bloqueado en cada polling, empeorando el bloqueo.
+          // Un 403 NO renueva el token: suele ser un bloqueo de Cloudflare/WAF
+          // propio de esa tienda. Borrar el token global (que las demás usan bien)
+          // y volver a golpear el endpoint bloqueado no lo arregla y empeora el
+          // bloqueo. Se reporta como error de esa tienda y se sigue.
           if (orderErr.message?.includes("(401)")) {
             try {
               invalidateToken();
-              // Reintentar SIEMPRE contra el host de la primera tienda (el
-              // mismo usado para el token inicial), nunca contra store.ocapi_host:
-              // así jamás se vuelve a golpear directamente el endpoint de
-              // token de una tienda que pueda estar bloqueada (ej. Cloudflare).
               const freshToken = await getAccessToken(stores[0].ocapi_host);
+              accessToken = freshToken.access_token;
 
               const orders = await searchPendingOrders(
                 store.ocapi_host,
                 store.ocapi_site,
-                freshToken.access_token
+                accessToken
               );
 
               return {
