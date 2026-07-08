@@ -123,5 +123,14 @@ export async function searchPendingOrders(
     }
   }
 
-  return allOrders;
+  // El backlog de pendientes cambia en tiempo real mientras se paginan las
+  // páginas en paralelo (pedidos se pagan/exportan entre una página y otra),
+  // por lo que un mismo pedido puede desplazarse y quedar repetido en dos
+  // páginas distintas. Deduplicar por order_no evita contarlo dos veces.
+  const seen = new Set<string>();
+  return allOrders.filter(order => {
+    if (seen.has(order.order_no)) return false;
+    seen.add(order.order_no);
+    return true;
+  });
 }
