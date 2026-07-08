@@ -26,7 +26,7 @@ const CHART_CLASSES = ["chart-bar-1", "chart-bar-2", "chart-bar-3", "chart-bar-4
 export default function DashboardOverview() {
   const { data, loading } = useRealtime<{ stores: StoreData[] }>({
     url: "/api/ocapi/orders",
-    intervalMs: 60000,
+    intervalMs: 300000, // 5 min
   });
 
   const [animated, setAnimated] = useState(false);

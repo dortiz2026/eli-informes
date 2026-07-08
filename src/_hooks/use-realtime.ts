@@ -2,22 +2,30 @@
 
 import { useState, useEffect } from "react";
 
+// Límites de auto-actualización: nunca menos de 5 min ni más de 30 min,
+// para no saturar de peticiones a Salesforce.
+const MIN_INTERVAL_MS = 5 * 60 * 1000;
+const MAX_INTERVAL_MS = 30 * 60 * 1000;
+
+const clampInterval = (ms: number): number =>
+  Math.min(Math.max(ms, MIN_INTERVAL_MS), MAX_INTERVAL_MS);
+
 interface UseRealtimeOptions<T> {
   url: string;
-  intervalMs?: number; // Configurable polling interval
+  intervalMs?: number; // Configurable polling interval (clamp: 5 min - 30 min)
   enabled?: boolean;
 }
 
 export function useRealtime<T>({
   url,
-  intervalMs = 30000, // Por defecto 30 segundos
+  intervalMs = MIN_INTERVAL_MS, // Por defecto 5 minutos
   enabled = true
 }: UseRealtimeOptions<T>) {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [customInterval, setCustomInterval] = useState<number>(intervalMs);
+  const [customInterval, setCustomInterval] = useState<number>(clampInterval(intervalMs));
 
   const fetchData = async () => {
     try {
@@ -58,6 +66,6 @@ export function useRealtime<T>({
     lastUpdated,
     refetch: fetchData,
     intervalMs: customInterval,
-    setIntervalMs: setCustomInterval
+    setIntervalMs: (ms: number) => setCustomInterval(clampInterval(ms))
   };
 }

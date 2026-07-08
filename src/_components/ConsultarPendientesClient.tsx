@@ -24,7 +24,7 @@ interface StoreData {
 export default function ConsultarPendientesClient() {
   const { data, loading, error, lastUpdated, refetch, intervalMs, setIntervalMs } = useRealtime<{ stores: StoreData[] }>({
     url: "/api/ocapi/orders",
-    intervalMs: 30000,
+    intervalMs: 300000, // 5 min
   });
 
   const formatRelativeTime = (date: Date): string => {
@@ -73,10 +73,10 @@ export default function ConsultarPendientesClient() {
               onChange={(e) => setIntervalMs(Number(e.target.value))}
               className="bg-transparent text-[11px] text-th-text-secondary focus:outline-none cursor-pointer"
             >
-              <option value={10000}>10s</option>
-              <option value={30000}>30s</option>
-              <option value={60000}>60s</option>
               <option value={300000}>5 min</option>
+              <option value={600000}>10 min</option>
+              <option value={900000}>15 min</option>
+              <option value={1800000}>30 min</option>
             </select>
           </div>
 
