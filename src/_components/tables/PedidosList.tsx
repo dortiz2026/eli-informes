@@ -64,6 +64,28 @@ export default function PedidosList({ stores }: PedidosListProps) {
     ? allOrders.filter((order) => toDateKey(order.creation_date) === selectedDate)
     : allOrders;
 
+  // Cantidad de pedidos por día (según tienda seleccionada, independiente del filtro de fecha)
+  const ordersByDay = Object.entries(
+    allOrders.reduce<Record<string, number>>((acc, order) => {
+      const key = toDateKey(order.creation_date);
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {})
+  )
+    .map(([date, count]) => ({ date, count }))
+    .sort((a, b) => (a.date < b.date ? 1 : -1));
+
+  const maxDayCount = Math.max(...ordersByDay.map((d) => d.count), 1);
+
+  const formatDayLabel = (dateKey: string): string => {
+    const [y, m, d] = dateKey.split("-").map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString("es-CO", {
+      weekday: "short",
+      day: "2-digit",
+      month: "short",
+    });
+  };
+
   const totalPages = Math.max(1, Math.ceil(displayOrders.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const pagedOrders = displayOrders.slice(
@@ -248,7 +270,51 @@ export default function PedidosList({ stores }: PedidosListProps) {
         </div>
       </div>
 
-      {/* 4. Compact Table */}
+      {/* 4. Pedidos por día */}
+      {ordersByDay.length > 0 && (
+        <div className="glass rounded-xl px-4 py-3">
+          <p className="text-[10px] uppercase tracking-wider text-th-text-muted mb-2.5">
+            Pedidos por día
+            {selectedStore !== "all" && ` · ${filteredStores[0]?.storeName || ""}`}
+          </p>
+          <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar pr-1">
+            {ordersByDay.map(({ date, count }) => {
+              const pct = (count / maxDayCount) * 100;
+              const isSelected = selectedDate === date;
+              return (
+                <button
+                  key={date}
+                  onClick={() => handleSelectDate(isSelected ? "" : date)}
+                  className={`w-full text-left rounded-md px-1.5 py-1 transition-colors ${
+                    isSelected ? "bg-th-subtle-hover" : "hover:bg-th-subtle"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span
+                      className={`text-[11px] capitalize ${
+                        isSelected ? "text-th-text font-semibold" : "text-th-text-secondary font-medium"
+                      }`}
+                    >
+                      {formatDayLabel(date)}
+                    </span>
+                    <span className="text-[11px] font-bold text-th-text tabular-nums">
+                      {count}
+                    </span>
+                  </div>
+                  <div className="chart-bar-track">
+                    <div
+                      className="chart-bar-fill chart-bar-1"
+                      style={{ width: `${Math.max(pct, 2)}%` }}
+                    />
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* 5. Compact Table */}
       {displayOrders.length > 0 ? (
         <div className="glass rounded-xl overflow-hidden">
           <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-340px)] custom-scrollbar">
