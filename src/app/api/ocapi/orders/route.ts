@@ -21,12 +21,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ stores: [] });
     }
 
-    // 2. Consultar pedidos en paralelo para cada tienda, cada una con su
-    //    propio token en caché por host (evita spam de peticiones a Salesforce)
+    // 2. Obtener UN SOLO token global (el mismo access_token sirve para
+    //    consultar cualquiera de las tiendas, no está ligado al host)
+    const tokenRes = await getAccessToken(stores[0].ocapi_host);
+
+    // 3. Consultar pedidos en paralelo para cada tienda usando el mismo
+    //    token. Cada callback usa su propia constante local (nunca muta
+    //    una variable compartida) para no pisar el token que estén
+    //    usando las demás tiendas en paralelo.
     const results = await Promise.all(
       stores.map(async (store) => {
         try {
-          const tokenRes = await getAccessToken(store.ocapi_host);
           const orders = await searchPendingOrders(
             store.ocapi_host,
             store.ocapi_site,
@@ -42,12 +47,14 @@ export async function GET(request: NextRequest) {
             error: null
           };
         } catch (orderErr: any) {
-          // Si el error es 401 o 403, el token de esta tienda puede estar
-          // expirado. Invalidar su caché y reintentar UNA sola vez con un
-          // token fresco, sin afectar el token cacheado de las demás tiendas.
+          // Si el error es 401 o 403, el token puede estar expirado.
+          // Invalidar caché y reintentar UNA sola vez con un token fresco.
+          // El lock de deduplicación en getAccessToken() asegura que, aunque
+          // varias tiendas fallen al mismo tiempo, solo se pida UN token
+          // nuevo a Salesforce (las demás reutilizan esa misma promesa).
           if (orderErr.message?.includes("(401)") || orderErr.message?.includes("(403)")) {
             try {
-              invalidateToken(store.ocapi_host);
+              invalidateToken();
               const freshToken = await getAccessToken(store.ocapi_host);
 
               const orders = await searchPendingOrders(
