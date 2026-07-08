@@ -21,18 +21,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ stores: [] });
     }
 
-    // 2. Obtener UN SOLO token global (sirve para todas las tiendas)
-    const tokenRes = await getAccessToken(stores[0].ocapi_host);
-    let accessToken = tokenRes.access_token;
-
-    // 3. Consultar pedidos en paralelo para cada tienda usando el mismo token
+    // 2. Consultar pedidos en paralelo para cada tienda, cada una con su
+    //    propio token en caché por host (evita spam de peticiones a Salesforce)
     const results = await Promise.all(
       stores.map(async (store) => {
         try {
+          const tokenRes = await getAccessToken(store.ocapi_host);
           const orders = await searchPendingOrders(
             store.ocapi_host,
             store.ocapi_site,
-            accessToken
+            tokenRes.access_token
           );
 
           return {
@@ -44,18 +42,18 @@ export async function GET(request: NextRequest) {
             error: null
           };
         } catch (orderErr: any) {
-          // Si el error es 401 o 403, el token puede estar expirado.
-          // Invalidar caché y reintentar UNA sola vez con un token fresco.
+          // Si el error es 401 o 403, el token de esta tienda puede estar
+          // expirado. Invalidar su caché y reintentar UNA sola vez con un
+          // token fresco, sin afectar el token cacheado de las demás tiendas.
           if (orderErr.message?.includes("(401)") || orderErr.message?.includes("(403)")) {
             try {
-              invalidateToken();
+              invalidateToken(store.ocapi_host);
               const freshToken = await getAccessToken(store.ocapi_host);
-              accessToken = freshToken.access_token;
 
               const orders = await searchPendingOrders(
                 store.ocapi_host,
                 store.ocapi_site,
-                accessToken
+                freshToken.access_token
               );
 
               return {
