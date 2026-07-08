@@ -26,8 +26,17 @@ interface PedidosListProps {
 
 const PAGE_SIZE = 50;
 
+const toDateKey = (dateString: string): string => {
+  const d = new Date(dateString);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
+
 export default function PedidosList({ stores }: PedidosListProps) {
   const [selectedStore, setSelectedStore] = useState<string>("all");
+  const [selectedDate, setSelectedDate] = useState<string>("");
   const [page, setPage] = useState(1);
 
   // Totales generales
@@ -50,15 +59,25 @@ export default function PedidosList({ stores }: PedidosListProps) {
     )
     .sort((a, b) => new Date(b.creation_date).getTime() - new Date(a.creation_date).getTime());
 
-  const totalPages = Math.max(1, Math.ceil(allOrders.length / PAGE_SIZE));
+  // Filtro por fecha (día exacto elegido por el usuario)
+  const displayOrders = selectedDate
+    ? allOrders.filter((order) => toDateKey(order.creation_date) === selectedDate)
+    : allOrders;
+
+  const totalPages = Math.max(1, Math.ceil(displayOrders.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
-  const pagedOrders = allOrders.slice(
+  const pagedOrders = displayOrders.slice(
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE
   );
 
   const handleSelectStore = (storeId: string) => {
     setSelectedStore(storeId);
+    setPage(1);
+  };
+
+  const handleSelectDate = (date: string) => {
+    setSelectedDate(date);
     setPage(1);
   };
 
@@ -161,56 +180,76 @@ export default function PedidosList({ stores }: PedidosListProps) {
         </div>
       )}
 
-      {/* 3. Tab Bar */}
-      <div className="flex items-center border-b border-th-border overflow-x-auto custom-scrollbar">
-        <button
-          onClick={() => handleSelectStore("all")}
-          className={`relative flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-colors whitespace-nowrap ${
-            selectedStore === "all"
-              ? "text-th-text tab-active-underline"
-              : "text-th-text-muted hover:text-th-text-secondary"
-          }`}
-        >
-          Todas
-          <span
-            className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+      {/* 3. Tab Bar + Date Filter */}
+      <div className="flex items-center justify-between gap-3 border-b border-th-border">
+        <div className="flex items-center overflow-x-auto custom-scrollbar">
+          <button
+            onClick={() => handleSelectStore("all")}
+            className={`relative flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-colors whitespace-nowrap ${
               selectedStore === "all"
-                ? "bg-th-subtle-hover text-th-text"
-                : "bg-th-subtle text-th-text-muted"
+                ? "text-th-text tab-active-underline"
+                : "text-th-text-muted hover:text-th-text-secondary"
             }`}
           >
-            {totalOrders}
-          </span>
-        </button>
-
-        {stores
-          .filter((s) => s.success)
-          .map((store) => (
-            <button
-              key={store.storeId}
-              onClick={() => handleSelectStore(store.storeId)}
-              className={`relative flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-colors whitespace-nowrap ${
-                selectedStore === store.storeId
-                  ? "text-th-text tab-active-underline"
-                  : "text-th-text-muted hover:text-th-text-secondary"
+            Todas
+            <span
+              className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                selectedStore === "all"
+                  ? "bg-th-subtle-hover text-th-text"
+                  : "bg-th-subtle text-th-text-muted"
               }`}
             >
-              {store.storeName}
-              <span
-                className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+              {totalOrders}
+            </span>
+          </button>
+
+          {stores
+            .filter((s) => s.success)
+            .map((store) => (
+              <button
+                key={store.storeId}
+                onClick={() => handleSelectStore(store.storeId)}
+                className={`relative flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-colors whitespace-nowrap ${
                   selectedStore === store.storeId
-                    ? "bg-th-subtle-hover text-th-text"
-                    : "bg-th-subtle text-th-text-muted"
+                    ? "text-th-text tab-active-underline"
+                    : "text-th-text-muted hover:text-th-text-secondary"
                 }`}
               >
-                {store.orders?.length || 0}
-              </span>
+                {store.storeName}
+                <span
+                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                    selectedStore === store.storeId
+                      ? "bg-th-subtle-hover text-th-text"
+                      : "bg-th-subtle text-th-text-muted"
+                  }`}
+                >
+                  {store.orders?.length || 0}
+                </span>
+              </button>
+            ))}
+        </div>
+
+        {/* Date filter */}
+        <div className="flex items-center gap-1.5 pr-1 shrink-0">
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => handleSelectDate(e.target.value)}
+            className="text-[11px] px-2 py-1.5 rounded-md bg-th-subtle border border-th-border text-th-text-secondary focus:outline-none focus:ring-1 focus:ring-th-border"
+          />
+          {selectedDate && (
+            <button
+              onClick={() => handleSelectDate("")}
+              className="text-[10px] px-2 py-1.5 rounded-md bg-th-subtle border border-th-border text-th-text-muted hover:text-th-text-secondary hover:bg-th-subtle-hover transition-colors"
+            >
+              Limpiar
             </button>
-          ))}
+          )}
+        </div>
       </div>
 
       {/* 4. Compact Table */}
-      {allOrders.length > 0 ? (
+      {displayOrders.length > 0 ? (
         <div className="glass rounded-xl overflow-hidden">
           <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-340px)] custom-scrollbar">
             <table className="table-compact">
@@ -273,7 +312,7 @@ export default function PedidosList({ stores }: PedidosListProps) {
           <div className="flex items-center justify-between px-4 py-2.5 border-t border-th-border bg-th-subtle">
             <span className="text-[10px] text-th-text-faint">
               Mostrando {pagedOrders.length ? (currentPage - 1) * PAGE_SIZE + 1 : 0}
-              –{(currentPage - 1) * PAGE_SIZE + pagedOrders.length} de {allOrders.length} pedidos
+              –{(currentPage - 1) * PAGE_SIZE + pagedOrders.length} de {displayOrders.length} pedidos
             </span>
 
             <div className="flex items-center gap-3">
@@ -326,7 +365,11 @@ export default function PedidosList({ stores }: PedidosListProps) {
             Sin pedidos pendientes
           </p>
           <p className="text-[11px] text-th-text-faint mt-1">
-            {selectedStore === "all"
+            {selectedDate
+              ? `No hay pedidos para el ${selectedDate}${
+                  selectedStore === "all" ? "" : ` en ${filteredStores[0]?.storeName || "esta tienda"}`
+                }.`
+              : selectedStore === "all"
               ? "No hay pedidos pendientes en ninguna tienda."
               : `No hay pedidos pendientes para ${
                   filteredStores[0]?.storeName || "esta tienda"
