@@ -61,7 +61,11 @@ export async function GET(request: NextRequest) {
           if (orderErr.message?.includes("(401)")) {
             try {
               invalidateToken();
-              const freshToken = await getAccessToken(store.ocapi_host);
+              // Reintentar SIEMPRE contra el host de la primera tienda (el
+              // mismo usado para el token inicial), nunca contra store.ocapi_host:
+              // así jamás se vuelve a golpear directamente el endpoint de
+              // token de una tienda que pueda estar bloqueada (ej. Cloudflare).
+              const freshToken = await getAccessToken(stores[0].ocapi_host);
 
               const orders = await searchPendingOrders(
                 store.ocapi_host,
